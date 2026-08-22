@@ -65,6 +65,20 @@ static void poll_task(void *arg)
 #endif
 
 #if CONFIG_PVMON_HA_ENABLE
+        /* Die Kapazitaet aendert sich nicht im Minutentakt, ein Abruf alle
+         * paar Minuten genuegt. */
+        static int kap_zaehler = 0;
+        if (CONFIG_PVMON_HA_ENTITY_CAPACITY[0] && kap_zaehler-- <= 0) {
+            float kwh;
+            if (ha_read_number(CONFIG_PVMON_HA_ENTITY_CAPACITY, &kwh) == ESP_OK) {
+                energy_set_capacity_wh(kwh * 1000.0f);
+                kap_zaehler = 150;          /* bei 2 s Takt rund fuenf Minuten */
+                ESP_LOGI(TAG, "Speicherkapazitaet: %.2f kWh", kwh);
+            } else {
+                kap_zaehler = 15;           /* fehlgeschlagen, bald erneut */
+            }
+        }
+
         float batt;
         if (CONFIG_PVMON_HA_ENTITY_POWER[0] &&
             ha_read_number(CONFIG_PVMON_HA_ENTITY_POWER, &batt) == ESP_OK) {
@@ -96,10 +110,11 @@ static void poll_task(void *arg)
         if (st.production_w.valid) {
             char hhmm[8];
             clock_hhmm(hhmm, sizeof(hhmm));
-            char batt[48] = "";
+            char batt[72] = "";
             if (st.soc_pct.valid) {
-                snprintf(batt, sizeof(batt), " | Speicher %.0f%% %s%.0f W (%s)",
+                snprintf(batt, sizeof(batt), " | Speicher %.0f%% = %.2f kWh, %s%.0f W (%s)",
                          st.soc_pct.value,
+                         st.reserve_wh.valid ? st.reserve_wh.value / 1000.0f : 0.0f,
                          st.battery_w.valid ? "" : "n/a ",
                          st.battery_w.valid ? st.battery_w.value : 0,
                          st.battery_dir > 0 ? "laedt" : st.battery_dir < 0 ? "entlaedt" : "ruht");

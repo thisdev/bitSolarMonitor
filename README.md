@@ -13,6 +13,11 @@ gibt es auf der [Projektseite](https://blog.bitlager.de/esp32/).
 Drei Seiten, gewischt wird mit dem Finger. Drei Punkte am unteren Rand zeigen,
 wo man gerade ist.
 
+Die Hauptseite wechselt dabei ihre Rolle: Solange die Sonne liefert, gehört
+der große Ring der Erzeugung. Fällt sie auf null, wäre ein Ring auf null
+verschenkte Fläche. Dann übernimmt der Speicher, mit seinem Ladezustand als
+Füllstand und seiner Lade- oder Entladeleistung in der Mitte.
+
 | Erzeugung | Tagesverlauf | Status |
 |:---:|:---:|:---:|
 | ![Hauptseite mit Erzeugungsring](docs/images/seite1-erzeugung.jpg) | ![Tagesverlauf als Kurve](docs/images/seite2-tagesverlauf.jpg) | ![Statusseite mit Netzspannung und WLAN](docs/images/seite3-status.jpg) |
@@ -92,8 +97,8 @@ CONFIG_PVMON_HA_TOKEN="eyJhbGciOi..."
 CONFIG_PVMON_HA_ENTITY_SOC="sensor.speicher_battery_soc"
 CONFIG_PVMON_HA_ENTITY_POWER="sensor.speicher_battery_power"
 CONFIG_PVMON_HA_POWER_INVERT=y     # falls negativ Laden bedeutet
-CONFIG_PVMON_HA_CAPACITY_WH=3590   # Nennkapazität, nicht die Ausgangsleistung
-CONFIG_PVMON_HA_RESERVE_PCT=15     # Entladegrenze des Speichers
+CONFIG_PVMON_HA_ENTITY_CAPACITY="sensor.speicher_rated_capacity"
+CONFIG_PVMON_HA_CAPACITY_WH=3590   # nur Rückfall, falls die Entität fehlt
 ```
 
 Den Token legt man in Home Assistant unter Profil, Reiter Sicherheit, ganz
@@ -104,8 +109,10 @@ unten an. Zwei Punkte sind erfahrungsgemäß fehlerträchtig:
   klärt das: Steigt der Ladezustand, während die Leistung negativ ist, gehört
   `CONFIG_PVMON_HA_POWER_INVERT=y` gesetzt.
 * **Die Kapazität.** Sie steckt oft nicht im Produktnamen. Ein "SF2000" hat
-  2000 W Ausgangsleistung, aber 3,59 kWh Kapazität. Der richtige Wert steht
-  meist als "Rated capacity" unter den Geräteentitäten.
+  2000 W Ausgangsleistung, aber 3,59 kWh Kapazität. Meist meldet das Gerät
+  sie selbst als "Rated capacity". Trägt man diese Entität ein, muss die Zahl
+  nirgends von Hand gepflegt werden, und ein späterer Speicherausbau wird von
+  allein berücksichtigt.
 
 Die IP-Adressen der Shellys müssen nicht eingetragen werden. Der Monitor sucht
 sie per mDNS und ordnet sie danach zu, **wie sie antworten**, nicht nach
@@ -153,9 +160,10 @@ Sonderbehandlung in der Anzeige.
 * **Ertrag heißt "seit Start"**, bis das Gerät einen Mitternachtswechsel
   miterlebt hat. Der Shelly Plug führt keine Tageshistorie.
 * **Der Tagesverlauf lebt im Arbeitsspeicher.** Ein Neustart löscht die Kurve.
-* **Der angezeigte Vorrat berücksichtigt die Entladegrenze.** Steht der
-  Speicher auf seiner Untergrenze, sind es ehrliche 0,0 kWh, auch wenn die
-  Prozentanzeige noch etwas anderes suggeriert.
+* **Ein nicht nutzbarer Sockel** lässt sich über `CONFIG_PVMON_HA_RESERVE_PCT`
+  abziehen, falls der Speicher unterhalb eines Ladezustands nichts mehr abgibt
+  und der gemeldete Wert diesen Sockel mitzählt. Im Zweifel bei 0 lassen. Ein
+  zu hoher Wert zeigt dauerhaft zu wenig Vorrat an.
 * **Seitenwechsel direkt nach dem Start** reagiert gelegentlich noch nicht.
 * **Zugangsdaten sind einkompiliert.** Ein fertiges Abbild darf deshalb nicht
   weitergegeben werden, es enthält WLAN-Name und Passwort im Klartext.

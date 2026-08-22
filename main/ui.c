@@ -9,6 +9,7 @@
 #include "esp_heap_caps.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "esp_log.h"
 
 #define COL_BG        lv_color_black()
@@ -28,7 +29,8 @@
 #define HEAD_INSET  44     /* Abstand vom Rand   */
 
 /* --- Seite 1 --- */
-static lv_obj_t *s_arc, *s_watt, *s_status, *s_footer, *s_clock, *s_temp;
+static lv_obj_t *s_arc, *s_watt, *s_unit, *s_caption, *s_sub;
+static lv_obj_t *s_status, *s_footer, *s_clock, *s_temp;
 static lv_obj_t *s_tile_grid, *s_tile_grid_val, *s_tile_grid_cap;
 static lv_obj_t *s_tile_house, *s_tile_house_val, *s_tile_house_cap;
 
@@ -139,17 +141,22 @@ static void build_page_main(lv_obj_t *p)
     lv_obj_set_style_arc_color(s_arc, COL_TRACK, LV_PART_MAIN);
     lv_obj_set_style_arc_color(s_arc, COL_SUN, LV_PART_INDICATOR);
 
-    lv_obj_t *cap = label(p, NULL, COL_DIM);
-    lv_label_set_text(cap, "Erzeugung");
-    lv_obj_align(cap, LV_ALIGN_TOP_MID, 0, 120);
+    s_caption = label(p, NULL, COL_DIM);
+    lv_label_set_text(s_caption, "Erzeugung");
+    lv_obj_align(s_caption, LV_ALIGN_TOP_MID, 0, 120);
 
     s_watt = label(p, &lv_font_montserrat_48, COL_TEXT);
     lv_label_set_text(s_watt, "--");
     lv_obj_align(s_watt, LV_ALIGN_TOP_MID, 0, 160);
 
-    lv_obj_t *unit = label(p, &lv_font_montserrat_28, COL_SUN);
-    lv_label_set_text(unit, "Watt");
-    lv_obj_align(unit, LV_ALIGN_TOP_MID, 0, 214);
+    s_unit = label(p, &lv_font_montserrat_28, COL_SUN);
+    lv_label_set_text(s_unit, "Watt");
+    lv_obj_align(s_unit, LV_ALIGN_TOP_MID, 0, 214);
+
+    /* Bleibt im Sonnenbetrieb leer und traegt abends den Vorrat. */
+    s_sub = label(p, NULL, COL_DIM);
+    lv_label_set_text(s_sub, "");
+    lv_obj_align(s_sub, LV_ALIGN_TOP_MID, 0, 252);
 
     s_tile_grid  = make_tile(p, &s_tile_grid_val,  &s_tile_grid_cap);
     s_tile_house = make_tile(p, &s_tile_house_val, &s_tile_house_cap);
@@ -281,17 +288,60 @@ static void update_main(const energy_state_t *st)
         lv_label_set_text(s_temp, buf);
     }
 
-    if (st->production_w.valid) {
-        int w = (int)(st->production_w.value + 0.5f);
-        lv_label_set_text_fmt(s_watt, "%d", w);
-        lv_arc_set_value(s_arc, w > 0 ? w : 0);
-        lv_obj_set_style_text_color(s_watt, COL_TEXT, 0);
+    /* Ein Ring, zwei Aufgaben. Tagsueber gehoert er der Sonne. Liefert sie
+     * nichts mehr, waere ein Ring auf null verschenkte Flaeche: dann
+     * uebernimmt der Speicher, mit seinem Ladezustand als Fuellstand und
+     * seiner Leistung in der Mitte. */
+    bool pv_laeuft   = st->production_w.valid && st->production_w.value > 5.0f;
+    bool speicher_da = st->soc_pct.valid;
+
+    if (pv_laeuft || !speicher_da) {
+        lv_arc_set_range(s_arc, 0, CONFIG_PVMON_INVERTER_LIMIT_W);
+        lv_obj_set_style_arc_color(s_arc, COL_SUN, LV_PART_INDICATOR);
+        lv_label_set_text(s_caption, "Erzeugung");
+        lv_obj_set_style_text_color(s_unit, COL_SUN, 0);
+        lv_label_set_text(s_sub, "");
+
+        if (st->production_w.valid) {
+            int w = (int)(st->production_w.value + 0.5f);
+            lv_label_set_text_fmt(s_watt, "%d", w);
+            lv_arc_set_value(s_arc, w > 0 ? w : 0);
+            lv_obj_set_style_text_color(s_watt, COL_TEXT, 0);
+        } else {
+            lv_label_set_text(s_watt, "--");
+            lv_arc_set_value(s_arc, 0);
+            lv_obj_set_style_text_color(s_watt, COL_DIM, 0);
+        }
     } else {
-        lv_label_set_text(s_watt, "--");
-        lv_arc_set_value(s_arc, 0);
-        lv_obj_set_style_text_color(s_watt, COL_DIM, 0);
+        lv_color_t farbe = st->battery_dir > 0 ? COL_FEED
+                         : st->battery_dir < 0 ? COL_DRAW : COL_DIM;
+
+        /* Der Ring zeigt jetzt den Ladezustand, nicht die Leistung. */
+        lv_arc_set_range(s_arc, 0, 100);
+        lv_arc_set_value(s_arc, (int)(st->soc_pct.value + 0.5f));
+        lv_obj_set_style_arc_color(s_arc, farbe, LV_PART_INDICATOR);
+
+        /* Umlautfrei: die eingebauten Montserrat-Schriften von LVGL
+         * decken nur den ASCII-Bereich ab. */
+        lv_label_set_text(s_caption, st->battery_dir > 0 ? "Laden"
+                                   : st->battery_dir < 0 ? "Entladen"
+                                                         : "Speicher");
+        lv_obj_set_style_text_color(s_unit, farbe, 0);
+
+        int w = st->battery_w.valid ? (int)(fabsf(st->battery_w.value) + 0.5f) : 0;
+        lv_label_set_text_fmt(s_watt, "%d", w);
+        lv_obj_set_style_text_color(s_watt, COL_TEXT, 0);
+
+        if (st->reserve_wh.valid) {
+            char kwh[16];
+            snprintf(kwh, sizeof(kwh), "%.1f", st->reserve_wh.value / 1000.0f);
+            komma(kwh);
+            lv_label_set_text_fmt(s_sub, "%d%%   %s kWh",
+                                  (int)(st->soc_pct.value + 0.5f), kwh);
+        }
     }
     lv_obj_align(s_watt, LV_ALIGN_TOP_MID, 0, 160);
+    lv_obj_align(s_sub,  LV_ALIGN_TOP_MID, 0, 252);
 
     if (st->grid_w.valid) {
         int g = (int)(st->grid_w.value + (st->grid_w.value < 0 ? -0.5f : 0.5f));
@@ -328,7 +378,11 @@ static void update_main(const energy_state_t *st)
 
     /* Solange der Speicher Auskunft gibt, ist sein Vorrat die nuetzlichere
      * Zahl. Ohne ihn bleibt der Zaehlerstand stehen. */
-    if (st->soc_pct.valid && st->reserve_wh.valid) {
+    if (!pv_laeuft && speicher_da) {
+        /* Vorrat steht bereits im Ring, hier also die ruhende Erzeugung. */
+        lv_obj_set_style_text_color(s_footer, COL_DIM, 0);
+        lv_label_set_text(s_footer, "Erzeugung 0 W");
+    } else if (st->soc_pct.valid && st->reserve_wh.valid) {
         char kwh[16];
         snprintf(kwh, sizeof(kwh), "%.1f", st->reserve_wh.value / 1000.0f);
         komma(kwh);

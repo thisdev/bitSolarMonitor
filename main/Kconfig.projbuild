@@ -71,8 +71,18 @@ menu "PV-Monitor"
                 Erwartet wird: positiv bedeutet laden. Meldet der Sensor es
                 andersherum, hier einschalten.
 
+        config PVMON_HA_ENTITY_CAPACITY
+            string "Entitaet der Speicherkapazitaet in kWh (optional)"
+            default ""
+            depends on PVMON_HA_ENABLE
+            help
+                Viele Speicher melden ihre Kapazitaet selbst, etwa als
+                "Rated capacity". Ist das Feld gesetzt, wird der Wert von
+                dort gelesen und der feste Wert unten nur als Rueckfall
+                benutzt.
+
         config PVMON_HA_CAPACITY_WH
-            int "Nennkapazitaet des Speichers in Wh"
+            int "Nennkapazitaet des Speichers in Wh (Rueckfall)"
             default 2000
             depends on PVMON_HA_ENABLE
             help
@@ -80,14 +90,15 @@ menu "PV-Monitor"
                 Steht meist als "Rated capacity" in den Geraetedaten.
 
         config PVMON_HA_RESERVE_PCT
-            int "Entladegrenze in Prozent"
+            int "Nicht nutzbarer Sockel in Prozent"
             default 0
             range 0 90
             depends on PVMON_HA_ENABLE
             help
-                Unterhalb dieses Ladezustands gibt der Speicher nichts mehr
-                ab. Angezeigt wird deshalb nur der Vorrat oberhalb dieser
-                Grenze, denn nur der ist tatsaechlich verfuegbar.
+                Nur setzen, wenn der Speicher unterhalb eines Ladezustands
+                tatsaechlich nichts mehr abgibt und der gemeldete Wert diesen
+                Sockel mitzaehlt. Im Zweifel bei 0 lassen: Ein zu hoher Wert
+                zeigt dauerhaft zu wenig Vorrat an.
     endmenu
 
     menu "Stufe 2: Netzbilanz (Shelly Pro 3EM)"

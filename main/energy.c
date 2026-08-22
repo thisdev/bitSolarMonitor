@@ -6,6 +6,10 @@
 static energy_state_t    s_state;
 static SemaphoreHandle_t s_lock;
 
+/* Meldet der Speicher seine Kapazitaet selbst, gilt dieser Wert. Sonst
+ * bleibt es beim fest eingetragenen. */
+static float             s_capacity_wh = 0.0f;
+
 static void set(measurement_t *m, float v)
 {
     m->value = v;
@@ -25,8 +29,11 @@ static void derive(void)
          * Steht der Speicher auf seiner Untergrenze, sind es ehrliche
          * 0,0 kWh, auch wenn die Prozentanzeige noch etwas anderes
          * suggeriert. */
+        float kapazitaet = s_capacity_wh > 0.0f
+                         ? s_capacity_wh
+                         : (float)CONFIG_PVMON_HA_CAPACITY_WH;
         float nutzbar = (s_state.soc_pct.value - (float)CONFIG_PVMON_HA_RESERVE_PCT)
-                        / 100.0f * (float)CONFIG_PVMON_HA_CAPACITY_WH;
+                        / 100.0f * kapazitaet;
         set(&s_state.reserve_wh, nutzbar > 0.0f ? nutzbar : 0.0f);
     } else {
         s_state.reserve_wh.valid = false;
@@ -93,6 +100,11 @@ void energy_set_soc(float percent)
 
     derive();
     xSemaphoreGive(s_lock);
+}
+
+void energy_set_capacity_wh(float wh)
+{
+    if (wh > 0.0f) s_capacity_wh = wh;
 }
 
 void energy_set_battery_power(float watt)

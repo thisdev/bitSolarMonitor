@@ -39,6 +39,7 @@ void            energy_set_production(float watt, float kwh, float temp_c);
 void            energy_set_grid(float watt, const float voltage[3]);
 void            energy_set_soc(float percent);
 void            energy_set_battery_power(float watt);
+void            energy_set_capacity_wh(float wh);
 void            energy_invalidate_soc(void);
 void            energy_invalidate_production(void);
 void            energy_invalidate_grid(void);
