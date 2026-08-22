@@ -31,7 +31,9 @@ angezeigt, statt eine Fehlermeldung zu produzieren.
 
 1. **Shelly Plug** am Wechselrichter. Zeigt die Erzeugung.
 2. **Plus Shelly Pro 3EM** am Netzübergabepunkt. Zeigt Netzbezug und Einspeisung.
-3. **Plus Speicherdaten.** Noch nicht umgesetzt.
+3. **Plus Home Assistant.** Zeigt den Ladezustand des Speichers und den
+   tatsächlich abrufbaren Vorrat in kWh. Grün mit Pfeil nach oben heißt laden,
+   rot mit Pfeil nach unten entladen.
 
 ## Voraussetzungen
 
@@ -82,7 +84,28 @@ CONFIG_PVMON_EM_ENABLE=y
 # Sitzt ein Batteriespeicher zwischen dem gemessenen Wechselrichter und dem
 # Netzübergabepunkt? Dann ist der Hausverbrauch nicht ableitbar.
 CONFIG_PVMON_STORAGE_BETWEEN=y
+
+# Stufe 3
+CONFIG_PVMON_HA_ENABLE=y
+CONFIG_PVMON_HA_HOST="192.168.1.50:8123"
+CONFIG_PVMON_HA_TOKEN="eyJhbGciOi..."
+CONFIG_PVMON_HA_ENTITY_SOC="sensor.speicher_battery_soc"
+CONFIG_PVMON_HA_ENTITY_POWER="sensor.speicher_battery_power"
+CONFIG_PVMON_HA_POWER_INVERT=y     # falls negativ Laden bedeutet
+CONFIG_PVMON_HA_CAPACITY_WH=3590   # Nennkapazität, nicht die Ausgangsleistung
+CONFIG_PVMON_HA_RESERVE_PCT=15     # Entladegrenze des Speichers
 ```
+
+Den Token legt man in Home Assistant unter Profil, Reiter Sicherheit, ganz
+unten an. Zwei Punkte sind erfahrungsgemäß fehlerträchtig:
+
+* **Das Vorzeichen der Speicherleistung.** Manche Sensoren melden Laden
+  positiv, andere negativ. Ein Blick in die Verlaufsgrafik von Home Assistant
+  klärt das: Steigt der Ladezustand, während die Leistung negativ ist, gehört
+  `CONFIG_PVMON_HA_POWER_INVERT=y` gesetzt.
+* **Die Kapazität.** Sie steckt oft nicht im Produktnamen. Ein "SF2000" hat
+  2000 W Ausgangsleistung, aber 3,59 kWh Kapazität. Der richtige Wert steht
+  meist als "Rated capacity" unter den Geräteentitäten.
 
 Die IP-Adressen der Shellys müssen nicht eingetragen werden. Der Monitor sucht
 sie per mDNS und ordnet sie danach zu, **wie sie antworten**, nicht nach
@@ -104,6 +127,7 @@ main/
   net.c/h         WLAN-Verbindung
   clock.c/h       Uhrzeit per NTP
   history.c/h     Tagesverlauf im Fünf-Minuten-Raster, Ertragsrechnung
+  ha.c/h          Home Assistant über die REST-Schnittstelle
   ui.c/h          Oberfläche mit LVGL, drei Seiten
   backlight.c/h   Helligkeitsstufen und Ruheabsenkung
 ```
@@ -129,6 +153,9 @@ Sonderbehandlung in der Anzeige.
 * **Ertrag heißt "seit Start"**, bis das Gerät einen Mitternachtswechsel
   miterlebt hat. Der Shelly Plug führt keine Tageshistorie.
 * **Der Tagesverlauf lebt im Arbeitsspeicher.** Ein Neustart löscht die Kurve.
+* **Der angezeigte Vorrat berücksichtigt die Entladegrenze.** Steht der
+  Speicher auf seiner Untergrenze, sind es ehrliche 0,0 kWh, auch wenn die
+  Prozentanzeige noch etwas anderes suggeriert.
 * **Seitenwechsel direkt nach dem Start** reagiert gelegentlich noch nicht.
 * **Zugangsdaten sind einkompiliert.** Ein fertiges Abbild darf deshalb nicht
   weitergegeben werden, es enthält WLAN-Name und Passwort im Klartext.

@@ -30,6 +30,66 @@ menu "PV-Monitor"
                 welches der Plug ist.
     endmenu
 
+    menu "Stufe 3: Speicher ueber Home Assistant"
+        config PVMON_HA_ENABLE
+            bool "Home Assistant einbinden"
+            default n
+
+        config PVMON_HA_HOST
+            string "Adresse samt Port, etwa 192.168.1.197:8123"
+            default ""
+            depends on PVMON_HA_ENABLE
+
+        config PVMON_HA_TOKEN
+            string "Long-Lived Access Token"
+            default ""
+            depends on PVMON_HA_ENABLE
+            help
+                In Home Assistant unter Profil, Reiter Sicherheit, ganz unten
+                anlegen. Der Token wird mit einkompiliert, das fertige Abbild
+                darf deshalb nicht weitergegeben werden.
+
+        config PVMON_HA_ENTITY_SOC
+            string "Entitaet des Ladezustands in Prozent"
+            default ""
+            depends on PVMON_HA_ENABLE
+
+        config PVMON_HA_ENTITY_POWER
+            string "Entitaet der Speicherleistung in Watt (optional)"
+            default ""
+            depends on PVMON_HA_ENABLE
+            help
+                Zeigt an, ob der Speicher gerade laedt oder entlaedt.
+                Bleibt das Feld leer, wird die Richtung ersatzweise aus der
+                Veraenderung des Ladezustands abgeleitet, was traeger ist.
+
+        config PVMON_HA_POWER_INVERT
+            bool "Vorzeichen der Speicherleistung umkehren"
+            default n
+            depends on PVMON_HA_ENABLE
+            help
+                Erwartet wird: positiv bedeutet laden. Meldet der Sensor es
+                andersherum, hier einschalten.
+
+        config PVMON_HA_CAPACITY_WH
+            int "Nennkapazitaet des Speichers in Wh"
+            default 2000
+            depends on PVMON_HA_ENABLE
+            help
+                Wird gebraucht, um aus Prozent eine Energiemenge zu machen.
+                Steht meist als "Rated capacity" in den Geraetedaten.
+
+        config PVMON_HA_RESERVE_PCT
+            int "Entladegrenze in Prozent"
+            default 0
+            range 0 90
+            depends on PVMON_HA_ENABLE
+            help
+                Unterhalb dieses Ladezustands gibt der Speicher nichts mehr
+                ab. Angezeigt wird deshalb nur der Vorrat oberhalb dieser
+                Grenze, denn nur der ist tatsaechlich verfuegbar.
+    endmenu
+
     menu "Stufe 2: Netzbilanz (Shelly Pro 3EM)"
         config PVMON_EM_ENABLE
             bool "Energiezaehler einbinden"

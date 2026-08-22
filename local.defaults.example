@@ -20,3 +20,12 @@ CONFIG_PVMON_INVERTER_LIMIT_W=800
 # IPs koennen leer bleiben -- dann sucht der Monitor die Geraete per mDNS.
 #CONFIG_PVMON_PLUG_HOST="192.168.1.31"
 #CONFIG_PVMON_EM_HOST="192.168.1.23"
+
+# --- Stufe 3: Speicher über Home Assistant (optional) ---
+#CONFIG_PVMON_HA_ENABLE=y
+#CONFIG_PVMON_HA_HOST="192.168.1.50:8123"
+#CONFIG_PVMON_HA_TOKEN="eyJhbGciOi..."
+#CONFIG_PVMON_HA_ENTITY_SOC="sensor.speicher_ladezustand"
+#CONFIG_PVMON_HA_ENTITY_POWER="sensor.speicher_leistung"
+#CONFIG_PVMON_HA_POWER_INVERT=y
+#CONFIG_PVMON_HA_CAPACITY_WH=2000

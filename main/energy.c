@@ -16,6 +16,23 @@ static void set(measurement_t *m, float v)
  * gerechnet, damit die Oberflaeche keine Physik kennen muss. */
 static void derive(void)
 {
+#if CONFIG_PVMON_HA_ENABLE
+    /* Aus Prozent wird erst mit der Kapazitaet eine Aussage, mit der man
+     * etwas anfangen kann. "78 Prozent" beantwortet nicht die Frage, ob es
+     * noch fuer eine Waschmaschine reicht, "1,6 kWh" schon. */
+    if (s_state.soc_pct.valid) {
+        /* Nur der Teil oberhalb der Entladegrenze ist wirklich abrufbar.
+         * Steht der Speicher auf seiner Untergrenze, sind es ehrliche
+         * 0,0 kWh, auch wenn die Prozentanzeige noch etwas anderes
+         * suggeriert. */
+        float nutzbar = (s_state.soc_pct.value - (float)CONFIG_PVMON_HA_RESERVE_PCT)
+                        / 100.0f * (float)CONFIG_PVMON_HA_CAPACITY_WH;
+        set(&s_state.reserve_wh, nutzbar > 0.0f ? nutzbar : 0.0f);
+    } else {
+        s_state.reserve_wh.valid = false;
+    }
+#endif
+
 #if CONFIG_PVMON_STORAGE_BETWEEN
     /* Sitzt ein Speicher zwischen Messpunkt und Netz, puffert er dazwischen:
      *   Netz         = Hausverbrauch - Speicherausgang
@@ -51,6 +68,47 @@ void energy_set_production(float watt, float kwh, float temp_c)
     set(&s_state.production_w, watt);
     set(&s_state.production_kwh, kwh);
     if (temp_c > 0.0f) set(&s_state.plug_temp_c, temp_c);
+    derive();
+    xSemaphoreGive(s_lock);
+}
+
+/* Unterhalb dieser Leistung gilt der Speicher als in Ruhe. Darunter ist es
+ * meist nur die Eigenversorgung der Elektronik. */
+#define BATT_IDLE_W 15.0f
+
+void energy_set_soc(float percent)
+{
+    static float last = -1.0f;
+
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    set(&s_state.soc_pct, percent);
+
+    /* Ersatzweg, wenn keine Leistung gemeldet wird: die Veraenderung des
+     * Ladezustands. Traeger, aber besser als gar keine Richtung. */
+    if (!s_state.battery_w.valid && last >= 0.0f) {
+        if      (percent > last + 0.05f) s_state.battery_dir =  1;
+        else if (percent < last - 0.05f) s_state.battery_dir = -1;
+    }
+    last = percent;
+
+    derive();
+    xSemaphoreGive(s_lock);
+}
+
+void energy_set_battery_power(float watt)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    set(&s_state.battery_w, watt);
+    if      (watt >  BATT_IDLE_W) s_state.battery_dir =  1;
+    else if (watt < -BATT_IDLE_W) s_state.battery_dir = -1;
+    else                          s_state.battery_dir =  0;
+    xSemaphoreGive(s_lock);
+}
+
+void energy_invalidate_soc(void)
+{
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    s_state.soc_pct.valid = false;
     derive();
     xSemaphoreGive(s_lock);
 }

@@ -22,6 +22,7 @@
 #include "backlight.h"
 #include "clock.h"
 #include "history.h"
+#include "ha.h"
 
 static const char *TAG = "pvmon";
 
@@ -63,6 +64,24 @@ static void poll_task(void *arg)
         }
 #endif
 
+#if CONFIG_PVMON_HA_ENABLE
+        float batt;
+        if (CONFIG_PVMON_HA_ENTITY_POWER[0] &&
+            ha_read_number(CONFIG_PVMON_HA_ENTITY_POWER, &batt) == ESP_OK) {
+#if CONFIG_PVMON_HA_POWER_INVERT
+            batt = -batt;
+#endif
+            energy_set_battery_power(batt);
+        }
+
+        float soc;
+        if (ha_read_number(CONFIG_PVMON_HA_ENTITY_SOC, &soc) == ESP_OK) {
+            energy_set_soc(soc);
+        } else {
+            energy_invalidate_soc();
+        }
+#endif
+
         energy_get(&st);
 
         bsp_display_lock(0);
@@ -77,10 +96,19 @@ static void poll_task(void *arg)
         if (st.production_w.valid) {
             char hhmm[8];
             clock_hhmm(hhmm, sizeof(hhmm));
-            ESP_LOGI(TAG, "[%s] Erzeugung %.0f W | Netz %s%.0f W | Haus %s%.0f W",
+            char batt[48] = "";
+            if (st.soc_pct.valid) {
+                snprintf(batt, sizeof(batt), " | Speicher %.0f%% %s%.0f W (%s)",
+                         st.soc_pct.value,
+                         st.battery_w.valid ? "" : "n/a ",
+                         st.battery_w.valid ? st.battery_w.value : 0,
+                         st.battery_dir > 0 ? "laedt" : st.battery_dir < 0 ? "entlaedt" : "ruht");
+            }
+            ESP_LOGI(TAG, "[%s] Erzeugung %.0f W | Netz %s%.0f W | Haus %s%.0f W%s",
                      hhmm, st.production_w.value,
                      st.grid_w.valid  ? "" : "n/a ", st.grid_w.valid  ? st.grid_w.value  : 0,
-                     st.house_w.valid ? "" : "n/a ", st.house_w.valid ? st.house_w.value : 0);
+                     st.house_w.valid ? "" : "n/a ", st.house_w.valid ? st.house_w.value : 0,
+                     batt);
         }
 
         vTaskDelay(pdMS_TO_TICKS(CONFIG_PVMON_POLL_INTERVAL_MS));

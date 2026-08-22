@@ -326,7 +326,25 @@ static void update_main(const energy_state_t *st)
     lv_obj_align(s_tile_grid,  LV_ALIGN_BOTTOM_MID, both ? -84 : 0, -60);
     lv_obj_align(s_tile_house, LV_ALIGN_BOTTOM_MID, both ?  84 : 0, -60);
 
-    if (st->production_kwh.valid) {
+    /* Solange der Speicher Auskunft gibt, ist sein Vorrat die nuetzlichere
+     * Zahl. Ohne ihn bleibt der Zaehlerstand stehen. */
+    if (st->soc_pct.valid && st->reserve_wh.valid) {
+        char kwh[16];
+        snprintf(kwh, sizeof(kwh), "%.1f", st->reserve_wh.value / 1000.0f);
+        komma(kwh);
+
+        /* Gruen mit Pfeil nach oben heisst laden, rot mit Pfeil nach unten
+         * entladen. In Ruhe bleibt es unauffaellig. */
+        const char *pfeil = "";
+        lv_color_t  farbe = COL_DIM;
+        if (st->battery_dir > 0) { pfeil = LV_SYMBOL_UP "  ";   farbe = COL_FEED; }
+        else if (st->battery_dir < 0) { pfeil = LV_SYMBOL_DOWN "  "; farbe = COL_DRAW; }
+
+        lv_obj_set_style_text_color(s_footer, farbe, 0);
+        lv_label_set_text_fmt(s_footer, "%sSpeicher %d%%   %s kWh",
+                              pfeil, (int)(st->soc_pct.value + 0.5f), kwh);
+    } else if (st->production_kwh.valid) {
+        lv_obj_set_style_text_color(s_footer, COL_DIM, 0);
         snprintf(buf, sizeof(buf), "%.1f", st->production_kwh.value);
         komma(buf);
         lv_label_set_text_fmt(s_footer, "%s kWh gesamt", buf);

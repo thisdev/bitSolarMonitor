@@ -23,6 +23,12 @@ typedef struct {
     measurement_t grid_w;            /* positiv = Bezug, negativ = Einspeisung */
     measurement_t grid_voltage[3];   /* Spannung der drei Phasen            */
 
+    /* Stufe 3 -- Speicher ueber Home Assistant */
+    measurement_t soc_pct;           /* Ladezustand in Prozent              */
+    measurement_t reserve_wh;        /* daraus errechneter Vorrat           */
+    measurement_t battery_w;         /* positiv = laedt, negativ = entlaedt */
+    int8_t        battery_dir;       /* +1 laedt, -1 entlaedt, 0 in Ruhe    */
+
     /* Abgeleitet, sobald beide Quellen gelten */
     measurement_t house_w;           /* Hausverbrauch = Erzeugung + Netz    */
 } energy_state_t;
@@ -31,5 +37,8 @@ void            energy_init(void);
 void            energy_get(energy_state_t *out);
 void            energy_set_production(float watt, float kwh, float temp_c);
 void            energy_set_grid(float watt, const float voltage[3]);
+void            energy_set_soc(float percent);
+void            energy_set_battery_power(float watt);
+void            energy_invalidate_soc(void);
 void            energy_invalidate_production(void);
 void            energy_invalidate_grid(void);
