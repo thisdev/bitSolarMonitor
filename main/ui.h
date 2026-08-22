@@ -16,5 +16,6 @@ void ui_update(const energy_state_t *st);
 
 /* Vorfuehrbetrieb: zeigt runde Beispielwerte und ersetzt WLAN-Name und
  * Adressen durch Platzhalter. Gedacht fuer Abbildungen in Dokumentation
- * und Artikeln, damit dort keine echten Netzdaten landen. */
-void ui_set_demo(bool an);
+ * und Artikeln, damit dort keine echten Netzdaten landen.
+ *   0 = aus, 1 = Sonnentag, 2 = Abend mit entladendem Speicher */
+void ui_set_demo(int modus);

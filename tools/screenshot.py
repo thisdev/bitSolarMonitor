@@ -75,17 +75,29 @@ def main() -> None:
 
     if a.demo:
         hole(a.host, "/demo?on=1")
-        time.sleep(0.6)
+        time.sleep(1.5)
+
+    # Nach jedem Umschalten bewusst Zeit lassen. Eine Aufnahme mit halb
+    # aufgebauter Seite muss man ohnehin wiederholen.
+    RUHE = 1.5
 
     if a.alle:
         for n in range(3):
             hole(a.host, f"/page?n={n}")
-            time.sleep(0.6)
+            time.sleep(RUHE)
             aufnehmen(a.host, ordner / f"{namen[n]}.png")
+
+        if a.demo:
+            # Zusaetzlich der Abendzustand: Sonne weg, Speicher traegt das Haus
+            hole(a.host, "/demo?on=2")
+            time.sleep(RUHE)
+            hole(a.host, "/page?n=0")
+            time.sleep(RUHE)
+            aufnehmen(a.host, ordner / "seite1-speicher-abend.png")
     else:
         if a.seite is not None:
             hole(a.host, f"/page?n={a.seite}")
-            time.sleep(0.6)
+            time.sleep(RUHE)
         ziel = ordner / (f"{namen[a.seite]}.png" if a.seite is not None else "aufnahme.png")
         aufnehmen(a.host, ziel)
 

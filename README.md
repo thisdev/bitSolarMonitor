@@ -18,10 +18,15 @@ der große Ring der Erzeugung. Fällt sie auf null, wäre ein Ring auf null
 verschenkte Fläche. Dann übernimmt der Speicher, mit seinem Ladezustand als
 Füllstand und seiner Lade- oder Entladeleistung in der Mitte.
 
-| Erzeugung | Tagesverlauf | Status |
-|:---:|:---:|:---:|
-| ![Hauptseite mit Erzeugungsring](docs/images/seite1-erzeugung.png) | ![Tagesverlauf als Kurve](docs/images/seite2-tagesverlauf.png) | ![Statusseite mit Netzspannung und WLAN](docs/images/seite3-status.png) |
-| Aktuelle Leistung im Ring, dazu Netz und Versorgungslage. Oben Temperatur und Uhrzeit. | Ertrag und Verlauf über 24 Stunden im Fünf-Minuten-Raster. | Netzspannung je Phase, WLAN, Laufzeit, gefundene Geräte. |
+| Tagsüber: Erzeugung | Abends: Speicher |
+|:---:|:---:|
+| ![Hauptseite mit Erzeugungsring](docs/images/seite1-erzeugung.png) | ![Hauptseite mit entladendem Speicher](docs/images/seite1-speicher-abend.png) |
+| Der Ring gehört der Sonne, darunter Netz und Versorgungslage. Grün mit Pfeil nach oben: der Speicher lädt. | Liefert die PV nichts mehr, übernimmt der Speicher den Ring. Rot heißt entladen, in der Mitte die Leistung. |
+
+| Tagesverlauf | Status |
+|:---:|:---:|
+| ![Tagesverlauf als Kurve](docs/images/seite2-tagesverlauf.png) | ![Statusseite mit Netzspannung und WLAN](docs/images/seite3-status.png) |
+| Ertrag und Verlauf über 24 Stunden im Fünf-Minuten-Raster. | Netzspannung je Phase, WLAN, Laufzeit, gefundene Geräte. |
 
 Die Aufnahmen stammen aus dem Vorführbetrieb, siehe unten. Sie zeigen runde
 Beispielwerte statt echter Messdaten.
@@ -160,7 +165,7 @@ Für Dokumentation und Artikel muss niemand das Display abfotografieren. Mit
 ```
 GET /shot          rohe RGB565-Daten des aktuellen Bildschirms
 GET /page?n=0..2   Seite umschalten
-GET /demo?on=1     Vorführbetrieb ein oder aus
+GET /demo?on=0|1|2 Vorführbetrieb: 1 Sonnentag, 2 Abend
 ```
 
 Das Werkzeug dazu liegt bei und braucht nur die Standardbibliothek:

@@ -36,6 +36,7 @@ static esp_err_t shot_handler(httpd_req_t *req)
 
     lv_image_dsc_t dsc;
     bsp_display_lock(0);
+    lv_refr_now(NULL);
     lv_result_t r = lv_snapshot_take_to_buf(lv_screen_active(), LV_COLOR_FORMAT_RGB565,
                                             &dsc, s_buf, SHOT_BYTES);
     bsp_display_unlock();
@@ -57,19 +58,22 @@ static esp_err_t shot_handler(httpd_req_t *req)
 static esp_err_t demo_handler(httpd_req_t *req)
 {
     char query[32] = {0}, wert[8] = {0};
-    bool an = true;
+    int an = 1;
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
         httpd_query_key_value(query, "on", wert, sizeof(wert)) == ESP_OK) {
-        an = (atoi(wert) != 0);
+        an = atoi(wert);
     }
 
     bsp_display_lock(0);
     ui_set_demo(an);
+    lv_refr_now(NULL);
     bsp_display_unlock();
 
-    ESP_LOGI(TAG, "Vorfuehrbetrieb %s", an ? "an" : "aus");
+    vTaskDelay(pdMS_TO_TICKS(700));
+
+    ESP_LOGI(TAG, "Vorfuehrbetrieb: %d", an);
     httpd_resp_set_type(req, "text/plain");
-    return httpd_resp_sendstr(req, an ? "demo an" : "demo aus");
+    return httpd_resp_sendstr(req, an == 2 ? "demo abend" : an ? "demo tag" : "demo aus");
 }
 
 static esp_err_t page_handler(httpd_req_t *req)
@@ -85,11 +89,12 @@ static esp_err_t page_handler(httpd_req_t *req)
 
     bsp_display_lock(0);
     ui_show_page(n);
+    lv_refr_now(NULL);          /* sofort zeichnen statt auf den Takt warten */
     bsp_display_unlock();
 
-    /* Kurz warten, damit die neue Seite gezeichnet ist, bevor jemand
-     * unmittelbar danach eine Aufnahme abholt. */
-    vTaskDelay(pdMS_TO_TICKS(250));
+    /* Danach bewusst grosszuegig warten. Eine Aufnahme, die eine halb
+     * aufgebaute Seite erwischt, kostet mehr Zeit als diese Pause. */
+    vTaskDelay(pdMS_TO_TICKS(700));
 
     httpd_resp_set_type(req, "text/plain");
     return httpd_resp_sendstr(req, "ok");
@@ -114,7 +119,7 @@ void shot_start(void)
     httpd_register_uri_handler(server, &page);
     httpd_register_uri_handler(server, &demo);
 
-    ESP_LOGI(TAG, "Aufnahmedienst bereit: /shot, /page?n=0..2, /demo?on=1");
+    ESP_LOGI(TAG, "Aufnahmedienst bereit: /shot, /page?n=0..2, /demo?on=0|1|2");
 }
 
 #else

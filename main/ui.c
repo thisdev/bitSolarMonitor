@@ -52,7 +52,7 @@ static char s_plug_host[40], s_em_host[40];
  * gezeichnet wird. */
 static energy_state_t s_last;
 static bool           s_have_last;
-static bool           s_demo;
+static int            s_demo;   /* 0 aus, 1 Tag, 2 Abend */
 
 /* Deutsches Dezimalkomma. printf kennt nur den Punkt. */
 static void komma(char *buf)
@@ -301,6 +301,24 @@ void ui_set_hosts(const char *plug, const char *em)
 static void demo_state(energy_state_t *d)
 {
     memset(d, 0, sizeof(*d));
+
+    if (s_demo == 2) {
+        /* Abend: die Sonne ist weg, der Speicher traegt das Haus. */
+        d->production_w.valid   = true;  d->production_w.value   = 0.0f;
+        d->production_kwh.valid = true;  d->production_kwh.value = 725.0f;
+        d->plug_temp_c.valid    = true;  d->plug_temp_c.value    = 25.0f;
+        d->grid_w.valid         = true;  d->grid_w.value         = 0.0f;
+        for (int i = 0; i < 3; i++) d->grid_voltage[i].valid = true;
+        d->grid_voltage[0].value = 230.5f;
+        d->grid_voltage[1].value = 231.0f;
+        d->grid_voltage[2].value = 229.5f;
+        d->soc_pct.valid    = true;  d->soc_pct.value    = 55.0f;
+        d->reserve_wh.valid = true;  d->reserve_wh.value = 1975.0f;
+        d->battery_w.valid  = true;  d->battery_w.value  = -285.0f;
+        d->battery_dir      = -1;
+        return;
+    }
+
     d->production_w.valid   = true;  d->production_w.value   = 385.0f;
     d->production_kwh.valid = true;  d->production_kwh.value = 725.0f;
     d->plug_temp_c.valid    = true;  d->plug_temp_c.value    = 30.0f;
@@ -319,7 +337,7 @@ static void update_main(const energy_state_t *st)
 {
     char buf[24];
     if (s_demo) {
-        lv_label_set_text(s_clock, "12:45");
+        lv_label_set_text(s_clock, s_demo == 2 ? "21:30" : "12:45");
     } else {
         clock_hhmm(buf, sizeof(buf));
         lv_label_set_text(s_clock, buf);
@@ -530,9 +548,9 @@ void ui_update(const energy_state_t *st)
     zeichne_seite();
 }
 
-void ui_set_demo(bool an)
+void ui_set_demo(int modus)
 {
-    s_demo = an;
-    if (an) history_fill_demo(); else history_init();
+    s_demo = modus;
+    if (modus) history_fill_demo(); else history_init();
     if (s_have_last) zeichne_seite();
 }
