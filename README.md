@@ -5,7 +5,7 @@ Shelly-Geräte direkt im lokalen Netz aus und zeigt, was die Photovoltaik-Anlage
 gerade produziert. Ohne Cloud, ohne Konto, ohne Zwischenserver.
 
 Wie das Projekt entstanden ist, steht ausführlich im Blogbeitrag:
-**[bitSolarMonitor auf bitlager.de](BLOG_POST_URL)**. Weitere ESP32-Projekte
+**[bitSolarMonitor auf bitlager.de](https://blog.bitlager.de/de/posts/tech/balkonkraftwerk-esp32-s3-amoled-pv-monitor/)**. Weitere ESP32-Projekte
 gibt es auf der [Projektseite](https://blog.bitlager.de/esp32/).
 
 ## Was es anzeigt
