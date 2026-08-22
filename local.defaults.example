@@ -1,0 +1,22 @@
+# Vorlage fuer die eigene Anlage. Kopieren und ausfuellen:
+#     cp local.defaults.example local.defaults
+# "local.defaults" steht in der .gitignore und wird nicht veroeffentlicht.
+
+# --- WLAN ---
+CONFIG_PVMON_WIFI_SSID="MeinWLAN"
+CONFIG_PVMON_WIFI_PASS="MeinPasswort"
+
+# --- Anlage ---
+# Maximale Leistung, die am Plug ankommen kann. Skaliert den Ring.
+CONFIG_PVMON_INVERTER_LIMIT_W=800
+
+# --- Stufe 2: Shelly Pro 3EM (optional) ---
+#CONFIG_PVMON_EM_ENABLE=y
+# Sitzt ein Batteriespeicher zwischen dem gemessenen Wechselrichter und dem
+# Netzuebergabepunkt? Dann ist der Hausverbrauch nicht ableitbar und der
+# Monitor zeigt stattdessen, ob die Anlage das Haus gerade traegt.
+#CONFIG_PVMON_STORAGE_BETWEEN=y
+
+# IPs koennen leer bleiben -- dann sucht der Monitor die Geraete per mDNS.
+#CONFIG_PVMON_PLUG_HOST="192.168.1.31"
+#CONFIG_PVMON_EM_HOST="192.168.1.23"

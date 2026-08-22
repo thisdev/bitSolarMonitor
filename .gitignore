@@ -1,0 +1,14 @@
+# ESP-IDF
+build/
+managed_components/
+dependencies.lock
+sdkconfig
+sdkconfig.old
+
+# Eigene Zugangsdaten. Vorlage ist local.defaults.example
+local.defaults
+
+# Fertige Abbilder enthalten die einkompilierten Zugangsdaten
+*.bin
+
+.DS_Store

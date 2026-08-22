@@ -1,0 +1,57 @@
+menu "PV-Monitor"
+
+    config PVMON_WIFI_SSID
+        string "WLAN-Name (SSID)"
+        default ""
+
+    config PVMON_WIFI_PASS
+        string "WLAN-Passwort"
+        default ""
+
+    config PVMON_INVERTER_LIMIT_W
+        int "Wechselrichter-Limit in Watt"
+        default 800
+        help
+            Maximale Ausgangsleistung. Skaliert die Balkenanzeige und
+            bestimmt, wie viel Reserve noch angezeigt wird.
+
+    config PVMON_POLL_INTERVAL_MS
+        int "Abfrageintervall in Millisekunden"
+        default 2000
+        range 500 60000
+
+    menu "Stufe 1: Erzeugung (Shelly Plug)"
+        config PVMON_PLUG_HOST
+            string "IP oder Hostname des Plugs (leer = automatisch suchen)"
+            default ""
+            help
+                Bleibt das Feld leer, sucht der Monitor per mDNS selbst
+                nach Shelly-Geraeten im Netz und erkennt am Antwortverhalten,
+                welches der Plug ist.
+    endmenu
+
+    menu "Stufe 2: Netzbilanz (Shelly Pro 3EM)"
+        config PVMON_EM_ENABLE
+            bool "Energiezaehler einbinden"
+            default n
+
+        config PVMON_STORAGE_BETWEEN
+            bool "Zwischen Plug und Netz sitzt ein Speicher"
+            default n
+            depends on PVMON_EM_ENABLE
+            help
+                Sitzt ein Batteriespeicher zwischen dem gemessenen
+                Wechselrichter und dem Netzuebergabepunkt, laesst sich der
+                Hausverbrauch nicht mehr aus Erzeugung und Netzbezug
+                errechnen -- der Speicher puffert dazwischen, und
+                Ladeleistung und Verbrauch sind nicht zu trennen.
+                Dann wird statt des Hausverbrauchs angezeigt, ob die
+                Anlage das Haus gerade traegt.
+
+        config PVMON_EM_HOST
+            string "IP oder Hostname des Zaehlers (leer = automatisch suchen)"
+            default ""
+            depends on PVMON_EM_ENABLE
+    endmenu
+
+endmenu
