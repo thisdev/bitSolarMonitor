@@ -30,6 +30,14 @@ menu "PV-Monitor"
                 welches der Plug ist.
     endmenu
 
+    config PVMON_SHOT_ENABLE
+        bool "Bildschirmaufnahmen ueber HTTP anbieten"
+        default n
+        help
+            Stellt /shot und /page bereit, um saubere Abbildungen fuer
+            Dokumentation zu erzeugen, statt das Display abzufotografieren.
+            Nur lesend, aber im Zweifel ausgeschaltet lassen.
+
     menu "Stufe 3: Speicher ueber Home Assistant"
         config PVMON_HA_ENABLE
             bool "Home Assistant einbinden"

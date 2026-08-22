@@ -17,6 +17,9 @@ void history_add(float watt);
  * LV_CHART_POINT_NONE und werden von LVGL uebersprungen. */
 int32_t *history_data(void);
 
+/* Fuellt den Verlauf mit einer plausiblen Tageskurve fuer Abbildungen. */
+void history_fill_demo(void);
+
 /* Ertrag seit Tagesbeginn beziehungsweise seit dem Einschalten. */
 void  history_meter(float meter_kwh);
 float history_today_kwh(void);

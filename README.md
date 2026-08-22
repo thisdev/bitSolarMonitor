@@ -20,10 +20,11 @@ Füllstand und seiner Lade- oder Entladeleistung in der Mitte.
 
 | Erzeugung | Tagesverlauf | Status |
 |:---:|:---:|:---:|
-| ![Hauptseite mit Erzeugungsring](docs/images/seite1-erzeugung.jpg) | ![Tagesverlauf als Kurve](docs/images/seite2-tagesverlauf.jpg) | ![Statusseite mit Netzspannung und WLAN](docs/images/seite3-status.jpg) |
+| ![Hauptseite mit Erzeugungsring](docs/images/seite1-erzeugung.png) | ![Tagesverlauf als Kurve](docs/images/seite2-tagesverlauf.png) | ![Statusseite mit Netzspannung und WLAN](docs/images/seite3-status.png) |
 | Aktuelle Leistung im Ring, dazu Netz und Versorgungslage. Oben Temperatur und Uhrzeit. | Ertrag und Verlauf über 24 Stunden im Fünf-Minuten-Raster. | Netzspannung je Phase, WLAN, Laufzeit, gefundene Geräte. |
 
-Die Aufnahmen entstanden am Abend, deshalb 0 Watt und eine noch leere Kurve.
+Die Aufnahmen stammen aus dem Vorführbetrieb, siehe unten. Sie zeigen runde
+Beispielwerte statt echter Messdaten.
 
 Der obere der beiden Knöpfe schaltet die Helligkeit in drei Stufen durch
 (25, 50, 100 Prozent). Nach 30 Sekunden ohne Berührung dimmt das Display auf
@@ -150,6 +151,28 @@ typedef struct {
 
 Die Oberfläche zeigt nur, was gilt. Deshalb braucht keine Ausbaustufe eine
 Sonderbehandlung in der Anzeige.
+
+## Bildschirmaufnahmen
+
+Für Dokumentation und Artikel muss niemand das Display abfotografieren. Mit
+`CONFIG_PVMON_SHOT_ENABLE=y` bietet das Gerät drei Adressen an:
+
+```
+GET /shot          rohe RGB565-Daten des aktuellen Bildschirms
+GET /page?n=0..2   Seite umschalten
+GET /demo?on=1     Vorführbetrieb ein oder aus
+```
+
+Das Werkzeug dazu liegt bei und braucht nur die Standardbibliothek:
+
+```bash
+python3 tools/screenshot.py 192.168.1.76 --alle --demo
+```
+
+Damit entstehen alle drei Seiten als PNG. Der **Vorführbetrieb** ist dabei der
+entscheidende Teil: Er zeigt runde Beispielwerte und ersetzt WLAN-Name und
+Geräteadressen durch Platzhalter. So landen keine echten Netzdaten in
+Abbildungen, die später öffentlich stehen.
 
 ## Bekannte Einschränkungen
 

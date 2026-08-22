@@ -39,13 +39,20 @@ static lv_obj_t *s_chart, *s_today, *s_today_cap;
 static lv_chart_series_t *s_series;
 
 /* --- Seite 3 --- */
-static lv_obj_t *s_diag;
+static lv_obj_t *s_diag_l, *s_diag_r;
 
 /* --- Seitenwechsel --- */
 static lv_obj_t *s_pages[PAGES], *s_dots[PAGES];
 static int       s_page;
 
 static char s_plug_host[40], s_em_host[40];
+
+/* Letzter bekannter Zustand. Ohne ihn bliebe eine frisch aufgeschlagene
+ * Seite bis zum naechsten Abruf leer, weil immer nur die sichtbare Seite
+ * gezeichnet wird. */
+static energy_state_t s_last;
+static bool           s_have_last;
+static bool           s_demo;
 
 /* Deutsches Dezimalkomma. printf kennt nur den Punkt. */
 static void komma(char *buf)
@@ -88,7 +95,9 @@ static lv_obj_t *make_tile(lv_obj_t *parent, lv_obj_t **val, lv_obj_t **cap)
  * Anbindung reicht die Bandbreite dafuer nicht, es ruckelt und einzelne
  * Teilbilder mischen sich sichtbar. Ein harter Wechsel kostet genau ein
  * Neuzeichnen und sieht dadurch sauber aus. */
-static void show_page(int n)
+static void zeichne_seite(void);
+
+void ui_show_page(int n)
 {
     if (n < 0) n = 0;
     if (n >= PAGES) n = PAGES - 1;
@@ -101,13 +110,16 @@ static void show_page(int n)
         else        lv_obj_add_flag(s_pages[i], LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_color(s_dots[i], i == n ? COL_TEXT : COL_TRACK, 0);
     }
+
+    /* Sofort fuellen, statt bis zum naechsten Abruf leer zu bleiben. */
+    if (s_have_last) zeichne_seite();
 }
 
 static void on_gesture(lv_event_t *e)
 {
     lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
-    if      (dir == LV_DIR_LEFT)  show_page(s_page + 1);
-    else if (dir == LV_DIR_RIGHT) show_page(s_page - 1);
+    if      (dir == LV_DIR_LEFT)  ui_show_page(s_page + 1);
+    else if (dir == LV_DIR_RIGHT) ui_show_page(s_page - 1);
 }
 
 static void build_page_main(lv_obj_t *p)
@@ -220,10 +232,18 @@ static void build_page_diag(lv_obj_t *p)
     lv_label_set_text(t, "Status");
     lv_obj_align(t, LV_ALIGN_TOP_MID, 0, HEAD_Y);
 
-    s_diag = label(p, NULL, COL_TEXT);
-    lv_label_set_text(s_diag, "");
-    lv_obj_set_style_text_line_space(s_diag, 6, 0);
-    lv_obj_align(s_diag, LV_ALIGN_TOP_LEFT, 40, 58);
+    /* Zwei Spalten: Bezeichnungen links, Werte rechtsbuendig. So nutzt die
+     * Seite die Breite und bleibt trotzdem auf einen Blick lesbar. */
+    s_diag_l = label(p, NULL, COL_DIM);
+    lv_label_set_text(s_diag_l, "");
+    lv_obj_set_style_text_line_space(s_diag_l, 8, 0);
+    lv_obj_align(s_diag_l, LV_ALIGN_TOP_LEFT, 44, 62);
+
+    s_diag_r = label(p, NULL, COL_TEXT);
+    lv_label_set_text(s_diag_r, "");
+    lv_obj_set_style_text_line_space(s_diag_r, 8, 0);
+    lv_obj_set_style_text_align(s_diag_r, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_align(s_diag_r, LV_ALIGN_TOP_RIGHT, -44, 62);
 }
 
 void ui_create(void)
@@ -262,7 +282,7 @@ void ui_create(void)
         lv_obj_move_foreground(s_dots[i]);
     }
 
-    show_page(0);
+    ui_show_page(0);
 }
 
 void ui_set_status(const char *text)
@@ -276,11 +296,34 @@ void ui_set_hosts(const char *plug, const char *em)
     strlcpy(s_em_host,   em   ? em   : "", sizeof(s_em_host));
 }
 
+/* Runde, plausible Werte fuer Abbildungen. Alles glatt durch fuenf teilbar,
+ * damit die Zahlen auf Bildern ruhig wirken. */
+static void demo_state(energy_state_t *d)
+{
+    memset(d, 0, sizeof(*d));
+    d->production_w.valid   = true;  d->production_w.value   = 385.0f;
+    d->production_kwh.valid = true;  d->production_kwh.value = 725.0f;
+    d->plug_temp_c.valid    = true;  d->plug_temp_c.value    = 30.0f;
+    d->grid_w.valid         = true;  d->grid_w.value         = -45.0f;
+    for (int i = 0; i < 3; i++) d->grid_voltage[i].valid = true;
+    d->grid_voltage[0].value = 230.5f;
+    d->grid_voltage[1].value = 231.0f;
+    d->grid_voltage[2].value = 229.5f;
+    d->soc_pct.valid    = true;  d->soc_pct.value    = 65.0f;
+    d->reserve_wh.valid = true;  d->reserve_wh.value = 2350.0f;
+    d->battery_w.valid  = true;  d->battery_w.value  = 340.0f;
+    d->battery_dir      = 1;
+}
+
 static void update_main(const energy_state_t *st)
 {
     char buf[24];
-    clock_hhmm(buf, sizeof(buf));
-    lv_label_set_text(s_clock, buf);
+    if (s_demo) {
+        lv_label_set_text(s_clock, "12:45");
+    } else {
+        clock_hhmm(buf, sizeof(buf));
+        lv_label_set_text(s_clock, buf);
+    }
 
     if (st->plug_temp_c.valid) {
         snprintf(buf, sizeof(buf), "%.1f C", st->plug_temp_c.value);
@@ -408,61 +451,88 @@ static void update_main(const energy_state_t *st)
 static void update_chart(void)
 {
     char buf[16];
-    snprintf(buf, sizeof(buf), "%.2f", history_today_kwh());
+    snprintf(buf, sizeof(buf), "%.2f", s_demo ? 3.25f : history_today_kwh());
     komma(buf);
     lv_label_set_text(s_today, buf);
     lv_label_set_text(s_today_cap,
-                      history_is_full_day() ? "kWh heute" : "kWh seit Start");
+                      (s_demo || history_is_full_day()) ? "kWh heute" : "kWh seit Start");
     lv_chart_refresh(s_chart);
 }
 
 static void update_diag(const energy_state_t *st)
 {
-    char text[320];
-    int n = 0;
+    char links[220], rechts[220];
+    int l = 0, r = 0;
 
-    n += snprintf(text + n, sizeof(text) - n, "Netzspannung\n");
-    if (st->grid_voltage[0].valid) {
-        for (int i = 0; i < 3; i++)
-            n += snprintf(text + n, sizeof(text) - n, "  L%d   %.1f V\n",
-                          i + 1, st->grid_voltage[i].value);
-    } else {
-        n += snprintf(text + n, sizeof(text) - n, "  keine Daten\n");
+    static const char *phasen[3] = { "Netzspannung L1", "L2", "L3" };
+    for (int i = 0; i < 3; i++) {
+        l += snprintf(links + l, sizeof(links) - l, "%s\n", phasen[i]);
+        if (st->grid_voltage[i].valid)
+            r += snprintf(rechts + r, sizeof(rechts) - r, "%.1f V\n", st->grid_voltage[i].value);
+        else
+            r += snprintf(rechts + r, sizeof(rechts) - r, "--\n");
     }
 
     wifi_ap_record_t ap;
-    n += snprintf(text + n, sizeof(text) - n, "\nWLAN\n");
-    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
-        n += snprintf(text + n, sizeof(text) - n, "  %s\n  %d dBm\n",
+    l += snprintf(links + l, sizeof(links) - l, "\nWLAN\nSignal\n");
+    if (s_demo) {
+        r += snprintf(rechts + r, sizeof(rechts) - r, "\nMeinWLAN\n-55 dBm\n");
+    } else if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+        r += snprintf(rechts + r, sizeof(rechts) - r, "\n%s\n%d dBm\n",
                       (const char *)ap.ssid, ap.rssi);
     } else {
-        n += snprintf(text + n, sizeof(text) - n, "  nicht verbunden\n");
+        r += snprintf(rechts + r, sizeof(rechts) - r, "\nnicht verbunden\n--\n");
     }
 
-    int64_t up = esp_timer_get_time() / 1000000;
-    n += snprintf(text + n, sizeof(text) - n,
-                  "\nLaufzeit\n  %lldd %02lld:%02lld:%02lld\n",
-                  up / 86400, (up % 86400) / 3600, (up % 3600) / 60, up % 60);
+    int64_t up = s_demo ? (5 * 86400 + 12 * 3600 + 30 * 60)
+                        : esp_timer_get_time() / 1000000;
+    l += snprintf(links + l, sizeof(links) - l, "\nLaufzeit\n");
+    r += snprintf(rechts + r, sizeof(rechts) - r, "\n%lldd %02lld:%02lld\n",
+                  up / 86400, (up % 86400) / 3600, (up % 3600) / 60);
 
-    n += snprintf(text + n, sizeof(text) - n, "\nGeraete\n  %s\n",
-                  s_plug_host[0] ? s_plug_host : "kein Plug");
-    if (s_em_host[0])
-        n += snprintf(text + n, sizeof(text) - n, "  %s\n", s_em_host);
+    l += snprintf(links + l, sizeof(links) - l, "\nPlug\nZaehler\n");
+    if (s_demo) {
+        r += snprintf(rechts + r, sizeof(rechts) - r, "\n192.168.1.50\n192.168.1.51\n");
+    } else {
+        r += snprintf(rechts + r, sizeof(rechts) - r, "\n%s\n%s\n",
+                      s_plug_host[0] ? s_plug_host : "keiner",
+                      s_em_host[0]   ? s_em_host   : "keiner");
+    }
 
-    snprintf(text + n, sizeof(text) - n, "\nSpeicher frei\n  %u KB",
-             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024));
+    snprintf(links + l, sizeof(links) - l, "\nSpeicher frei");
+    snprintf(rechts + r, sizeof(rechts) - r, "\n%u KB",
+             s_demo ? 135u : (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024));
 
-    lv_label_set_text(s_diag, text);
+    lv_label_set_text(s_diag_l, links);
+    lv_label_set_text(s_diag_r, rechts);
 }
 
-void ui_update(const energy_state_t *st)
+/* Was nicht zu sehen ist, muss auch nicht gezeichnet werden. Vor allem die
+ * Kurve mit ihren 288 Punkten kostet sonst bei jedem Abruf Zeit, ohne dass
+ * es jemand bemerkt. */
+static void zeichne_seite(void)
 {
-    /* Was nicht zu sehen ist, muss auch nicht gezeichnet werden. Vor allem
-     * die Kurve mit ihren 288 Punkten kostet sonst bei jedem Abruf Zeit,
-     * ohne dass es jemand bemerkt. */
+    energy_state_t demo;
+    const energy_state_t *st = &s_last;
+    if (s_demo) { demo_state(&demo); st = &demo; }
+
     switch (s_page) {
         case 0: update_main(st);  break;
         case 1: update_chart();   break;
         case 2: update_diag(st);  break;
     }
+}
+
+void ui_update(const energy_state_t *st)
+{
+    s_last      = *st;
+    s_have_last = true;
+    zeichne_seite();
+}
+
+void ui_set_demo(bool an)
+{
+    s_demo = an;
+    if (an) history_fill_demo(); else history_init();
+    if (s_have_last) zeichne_seite();
 }

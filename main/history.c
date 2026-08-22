@@ -59,6 +59,34 @@ void history_add(float watt)
     s_points[s_slot] = (int32_t)(s_sum / s_count + 0.5f);
 }
 
+void history_fill_demo(void)
+{
+    /* Ein plausibler Sommertag: Sonnenaufgang gegen halb sieben, Scheitel
+     * kurz nach eins, Untergang gegen halb neun. Dazu zwei Wolkenphasen,
+     * die ueber mehrere Faecher laufen. Einzelne abgesenkte Punkte saehen
+     * nach Messfehlern aus, nicht nach Wetter. */
+    const int von = 78, bis = 246, hoch = 158;      /* Faecher zu fuenf Minuten */
+
+    for (int i = 0; i < HIST_SLOTS; i++) {
+        if (i < von || i > bis) { s_points[i] = LV_CHART_POINT_NONE; continue; }
+
+        float x = (float)(i - hoch) / (float)((bis - von) / 2);
+        float y = 780.0f * (1.0f - x * x);
+        if (y < 0.0f) y = 0.0f;
+
+        /* Zwei Wolkenphasen von je gut einer Stunde */
+        if (i >= 108 && i <= 122) y *= 0.55f;
+        if (i >= 186 && i <= 196) y *= 0.70f;
+
+        /* Leichte Unruhe, damit es nicht nach Lehrbuch aussieht */
+        y *= 0.97f + 0.03f * (float)((i * 7) % 5);
+
+        if (y > 800.0f) y = 800.0f;
+        s_points[i] = (int32_t)(y / 5.0f + 0.5f) * 5;   /* auf Fuenfer runden */
+    }
+    s_slot = -1;
+}
+
 int32_t *history_data(void)
 {
     return s_points;

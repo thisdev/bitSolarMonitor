@@ -23,6 +23,7 @@
 #include "clock.h"
 #include "history.h"
 #include "ha.h"
+#include "shot.h"
 
 static const char *TAG = "pvmon";
 
@@ -155,6 +156,8 @@ void app_main(void)
 
     /* Uhr laeuft im Hintergrund an, die Anzeige wartet nicht darauf. */
     clock_start();
+
+    shot_start();
 
     strlcpy(s_plug_host, CONFIG_PVMON_PLUG_HOST, sizeof(s_plug_host));
 #if CONFIG_PVMON_EM_ENABLE

@@ -17,3 +17,6 @@ CONFIG_LV_FONT_MONTSERRAT_48=y
 # app_main baut die Oberflaeche auf und stoesst die Geraetesuche an --
 # beides mit HTTP dahinter. Die Standardgroesse ist dafuer zu knapp.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# Erlaubt Bildschirmaufnahmen fuer die Dokumentation
+CONFIG_LV_USE_SNAPSHOT=y
