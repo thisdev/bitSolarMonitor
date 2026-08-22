@@ -4,18 +4,21 @@ Ein kleiner PV-Monitor für den Waveshare ESP32-S3-Touch-AMOLED-1.8. Er liest
 Shelly-Geräte direkt im lokalen Netz aus und zeigt, was die Photovoltaik-Anlage
 gerade produziert. Ohne Cloud, ohne Konto, ohne Zwischenserver.
 
-Entstanden als Begleitprojekt zu einem Artikel auf
-[blog.bitlager.de](https://blog.bitlager.de/esp32/).
+Wie das Projekt entstanden ist, steht ausführlich im Blogbeitrag:
+**[bitSolarMonitor auf bitlager.de](BLOG_POST_URL)**. Weitere ESP32-Projekte
+gibt es auf der [Projektseite](https://blog.bitlager.de/esp32/).
 
 ## Was es anzeigt
 
-Drei Seiten, gewischt wird mit dem Finger.
+Drei Seiten, gewischt wird mit dem Finger. Drei Punkte am unteren Rand zeigen,
+wo man gerade ist.
 
-| Seite | Inhalt |
-|---|---|
-| 1 | Erzeugung als große Zahl im Ring, Netzbezug, Versorgungslage, Uhrzeit, Temperatur |
-| 2 | Tagesverlauf als Kurve, darüber der Ertrag |
-| 3 | Netzspannung je Phase, WLAN mit Signalstärke, Laufzeit, gefundene Geräte |
+| Erzeugung | Tagesverlauf | Status |
+|:---:|:---:|:---:|
+| ![Hauptseite mit Erzeugungsring](docs/images/seite1-erzeugung.jpg) | ![Tagesverlauf als Kurve](docs/images/seite2-tagesverlauf.jpg) | ![Statusseite mit Netzspannung und WLAN](docs/images/seite3-status.jpg) |
+| Aktuelle Leistung im Ring, dazu Netz und Versorgungslage. Oben Temperatur und Uhrzeit. | Ertrag und Verlauf über 24 Stunden im Fünf-Minuten-Raster. | Netzspannung je Phase, WLAN, Laufzeit, gefundene Geräte. |
+
+Die Aufnahmen entstanden am Abend, deshalb 0 Watt und eine noch leere Kurve.
 
 Der obere der beiden Knöpfe schaltet die Helligkeit in drei Stufen durch
 (25, 50, 100 Prozent). Nach 30 Sekunden ohne Berührung dimmt das Display auf
